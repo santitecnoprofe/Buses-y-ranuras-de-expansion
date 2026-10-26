@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actividad Interactiva: Buses y Puertos de Vídeo</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+    }
+
+    /* Styles for Drag & Drop elements */
+    .draggable-item {
+      cursor: grab;
+      touch-action: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+    }
+    
+    .draggable-item:active {
+      cursor: grabbing;
+      transform: scale(1.04);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+    }
+
+    .draggable-item.dragging {
+      opacity: 0.4;
+    }
+
+    .drop-zone {
+      transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .drop-zone.drag-over {
+      background-color: rgba(99, 102, 241, 0.15) !important;
+      border-color: #6366f1 !important;
+      transform: scale(1.02);
+    }
+
+    /* Feedback highlights */
+    .is-correct {
+      border-color: #10b981 !important;
+      background-color: #ecfdf5 !important;
+      color: #047857 !important;
+    }
+
+    .is-incorrect {
+      border-color: #ef4444 !important;
+      background-color: #fef2f2 !important;
+      color: #b91c1c !important;
+    }
+
+    /* Slots inside text fill-in-the-blank */
+    .text-drop-slot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 130px;
+      height: 38px;
+      padding: 0 8px;
+      margin: 2px 4px;
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      background-color: #f8fafc;
+      vertical-align: middle;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .dark .text-drop-slot {
+      border-color: #475569;
+      background-color: #1e293b;
+    }
+
+    /* Identification Card Drop Box */
+    .target-card-slot {
+      min-height: 52px;
+      border: 2px dashed #cbd5e1;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f8fafc;
+      transition: all 0.2s ease;
+    }
+
+    .dark .target-card-slot {
+      border-color: #475569;
+      background-color: #0f172a;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-indigo-600 dark:bg-indigo-950 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
+          <i class="ph-bold ph-cpu text-3xl"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl font-extrabold tracking-tight">Evolución de Buses y Puertos de Vídeo</h1>
+          <p class="text-indigo-200 text-sm font-medium">Actividad interactiva de aprendizaje</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 bg-indigo-700/60 dark:bg-indigo-900/60 px-5 py-2.5 rounded-2xl backdrop-blur-md border border-white/10">
+        <i class="ph-bold ph-trophy text-yellow-300 text-2xl"></i>
+        <div>
+          <span class="text-xs uppercase tracking-wider text-indigo-200 font-bold block">Puntuación Total</span>
+          <span id="score-display" class="text-xl font-black text-white">0 / 44</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+    <div class="flex flex-wrap gap-3 mb-8 border-b border-slate-200 dark:border-slate-800 pb-4">
+      <button id="tab-btn-1" onclick="switchTab(1)" class="tab-btn active flex items-center gap-2 px-5 py-3 rounded-xl font-bold transition-all bg-indigo-600 text-white shadow-md shadow-indigo-500/20">
+        <i class="ph-bold ph-textbox text-xl"></i> 1. Completar Texto
+      </button>
+      <button id="tab-btn-2" onclick="switchTab(2)" class="tab-btn flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all">
+        <i class="ph-bold ph-squares-four text-xl"></i> 2. Parrilla Completa (15)
+      </button>
+      <button id="tab-btn-3" onclick="switchTab(3)" class="tab-btn flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all">
+        <i class="ph-bold ph-game-controller text-xl"></i> 3. Modo Videojuego (Nivel a Nivel)
+      </button>
+    </div>
+
+    <!-- ACTIVIDAD 1: COMPLETAR EL TEXTO -->
+    <section id="actividad-1" class="tab-content block">
+      <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700/50">
+        <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 dark:border-slate-700 pb-4">
+          <div>
+            <h2 class="text-xl font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+              <i class="ph-bold ph-pencil-line"></i> Evolución Histórica de los Buses de Expansión
+            </h2>
+            <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Arrastra las palabras clave a los huecos del texto técnico.</p>
+          </div>
+          <button onclick="resetActivity1()" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-semibold text-sm transition flex items-center gap-2">
+            <i class="ph-bold ph-arrow-counter-clockwise"></i> Reiniciar
+          </button>
+        </div>
+
+        <!-- Draggables Bank 1 -->
+        <div class="bg-slate-100 dark:bg-slate-900/60 p-5 rounded-2xl mb-8 border border-slate-200 dark:border-slate-700">
+          <span class="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-3">Términos disponibles:</span>
+          <div id="drag-bank-1" class="flex flex-wrap gap-2.5 min-h-[50px] items-center">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+
+        <!-- Interactive Text Blocks -->
+        <div class="space-y-6 text-slate-700 dark:text-slate-200 leading-relaxed text-base">
+          
+          <div class="p-5 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-200/60 dark:border-slate-700/50">
+            <h3 class="font-bold text-slate-900 dark:text-slate-100 mb-2 text-sm uppercase tracking-wider text-indigo-500">1. Los Primeros Buses de Expansión (8 y 16 bits)</h3>
+            <p>
+              En los primeros ordenadores IBM PC se utilizó el bus de 8 bits conocido como 
+              <span class="text-drop-slot drop-zone" data-slot="xt"></span>. 
+              Posteriormente, con la llegada del IBM AT de 16 bits, se estandarizó el bus 
+              <span class="text-drop-slot drop-zone" data-slot="isa"></span>, 
+              caracterizado por sus ranuras negras alargadas.
+            </p>
+          </div>
+
+          <div class="p-5 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-200/60 dark:border-slate-700/50">
+            <h3 class="font-bold text-slate-900 dark:text-slate-100 mb-2 text-sm uppercase tracking-wider text-indigo-500">2. La Transición a los 32 Bits en la era 80386/80486</h3>
+            <p>
+              IBM intentó imponer la arquitectura propietaria de 32 bits denominada 
+              <span class="text-drop-slot drop-zone" data-slot="mca"></span>, 
+              pero la industria respondió creando el estándar abierto 
+              <span class="text-drop-slot drop-zone" data-slot="eisa"></span>. 
+              Para resolver el cuello de botella en aceleración gráfica con el procesador 80486, se creó el bus local 
+              <span class="text-drop-slot drop-zone" data-slot="vesa"></span>, 
+              que añadía un conector marrón al final de la ranura ISA.
+            </p>
+          </div>
+
+          <div class="p-5 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-200/60 dark:border-slate-700/50">
+            <h3 class="font-bold text-slate-900 dark:text-slate-100 mb-2 text-sm uppercase tracking-wider text-indigo-500">3. Buses PCI, AGP y la Revolución de PCI Express</h3>
+            <p>
+              Con el procesador Pentium surgió el slot blanco universal de 32 bits denominado 
+              <span class="text-drop-slot drop-zone" data-slot="pci"></span>. 
+              Para tarjetas de vídeo 3D se creó el puerto dedicado 
+              <span class="text-drop-slot drop-zone" data-slot="agp"></span>. 
+              Hoy en día, el estándar dominante es 
+              <span class="text-drop-slot drop-zone" data-slot="pcie"></span>, 
+              que funciona en serie punto a punto. Sus ranuras pequeñas de red/sonido usan 
+              <span class="text-drop-slot drop-zone" data-slot="pcie-x1"></span>, 
+              mientras que las tarjetas gráficas de alto rendimiento requieren el formato 
+              <span class="text-drop-slot drop-zone" data-slot="pcie-x16"></span>.
+            </p>
+          </div>
+
+          <div class="p-5 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-200/60 dark:border-slate-700/50">
+            <h3 class="font-bold text-slate-900 dark:text-slate-100 mb-2 text-sm uppercase tracking-wider text-indigo-500">4. Interfaces de Conexión de Vídeo</h3>
+            <p>
+              El conector analógico azul de 15 pines en 3 filas es el 
+              <span class="text-drop-slot drop-zone" data-slot="vga"></span>, 
+              mientras que la señal analógica separada en luminancia/crominancia se llama 
+              <span class="text-drop-slot drop-zone" data-slot="s-video"></span>. 
+              En señales digitales, la conexión directa a monitores TFT se realiza mediante 
+              <span class="text-drop-slot drop-zone" data-slot="dvi"></span>, 
+              y la transmisión conjunta de audio y vídeo digital se efectúa por el puerto 
+              <span class="text-drop-slot drop-zone" data-slot="hdmi"></span>.
+            </p>
+          </div>
+
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-8 flex flex-wrap gap-4 items-center justify-between border-t border-slate-100 dark:border-slate-700 pt-6">
+          <button onclick="checkActivity1()" class="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-500/30 transition flex items-center gap-2">
+            <i class="ph-bold ph-check-circle text-xl"></i> Comprobar Respuestas (Texto)
+          </button>
+          <div id="feedback-1" class="text-sm font-bold"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACTIVIDAD 2: IDENTIFICAR RANURAS Y PUERTOS -->
+    <section id="actividad-2" class="tab-content hidden">
+      <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700/50">
+        
+        <!-- Mode Switch Header -->
+        <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 dark:border-slate-700 pb-5">
+          <div>
+            <h2 class="text-xl font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+              <i class="ph-bold ph-identification-card"></i> Parrilla Global de Ranuras y Conectores
+            </h2>
+            <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Arrastra el término exacto hacia su correspondiente ficha o diagrama visual en vista completa.</p>
+          </div>
+
+          <!-- View Mode Toggle -->
+          <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <button id="mode-btn-text" onclick="setIdentifyMode('text')" class="px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm flex items-center gap-1.5">
+              <i class="ph-bold ph-text-aa text-base"></i> Modo Pistas
+            </button>
+            <button id="mode-btn-image" onclick="setIdentifyMode('image')" class="px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1.5">
+              <i class="ph-bold ph-image text-base"></i> Modo Diagramas SVG
+            </button>
+          </div>
+        </div>
+
+        <!-- Draggables Pool 2 -->
+        <div class="bg-slate-100 dark:bg-slate-900/60 p-5 rounded-2xl mb-8 border border-slate-200 dark:border-slate-700">
+          <span class="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-3">Ranuras, Buses y Puertos a clasificar:</span>
+          <div id="drag-bank-2" class="flex flex-wrap gap-2.5 min-h-[50px] items-center">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+
+        <!-- Target Cards Grid -->
+        <div id="identify-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <!-- Cards rendered by JS depending on active mode -->
+        </div>
+
+        <!-- Action Button -->
+        <div class="mt-8 flex flex-wrap gap-4 items-center justify-between border-t border-slate-100 dark:border-slate-700 pt-6">
+          <button onclick="checkActivity2()" class="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-500/30 transition flex items-center gap-2">
+            <i class="ph-bold ph-check-circle text-xl"></i> Comprobar Identificación
+          </button>
+          <div id="feedback-2" class="text-sm font-bold"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ACTIVIDAD 3: MODO VIDEOJUEGO (ONE AT A TIME) -->
+    <section id="actividad-3" class="tab-content hidden">
+      <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700/50">
+        
+        <!-- Arcade Game Status Bar -->
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-900 text-white p-5 rounded-2xl mb-8 border border-slate-800 shadow-md">
+          <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Vidas:</span>
+              <div id="game-lives" class="flex items-center gap-1 text-red-500 text-xl">
+                <i class="ph-fill ph-heart"></i>
+                <i class="ph-fill ph-heart"></i>
+                <i class="ph-fill ph-heart"></i>
+              </div>
+            </div>
+            <div class="h-6 w-px bg-slate-700"></div>
+            <div>
+              <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">XP Nivel:</span>
+              <span id="game-score" class="text-lg font-black text-amber-400">0 pts</span>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="w-full md:w-64">
+            <div class="flex justify-between text-xs font-bold mb-1 text-slate-300">
+              <span>Progreso de Misión</span>
+              <span id="game-level-indicator">Nivel 1 / 15</span>
+            </div>
+            <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+              <div id="game-progress-bar" class="h-full bg-indigo-500 transition-all duration-300" style="width: 6.66%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Level Game Arena -->
+        <div id="game-arena-container" class="max-w-3xl mx-auto">
+          <!-- Active Card Screen -->
+          <div class="bg-slate-50 dark:bg-slate-900/60 p-6 sm:p-8 rounded-3xl border-2 border-indigo-200 dark:border-slate-700 relative">
+            
+            <div class="flex items-center justify-between mb-4">
+              <span class="px-3 py-1 bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1">
+                <i class="ph-bold ph-shield-check"></i> Desafío Técnico Activo
+              </span>
+              <!-- Card Mode Switch -->
+              <div class="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold">
+                <button id="game-view-text" onclick="setGameCardView('text')" class="px-3 py-1 rounded-lg bg-indigo-600 text-white transition">Pistas</button>
+                <button id="game-view-image" onclick="setGameCardView('image')" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-300 transition">Imagen SVG</button>
+              </div>
+            </div>
+
+            <!-- Card View Body -->
+            <div id="game-card-content" class="my-6 min-h-[140px] flex items-center justify-center text-center">
+              <!-- Rendered dynamically -->
+            </div>
+
+            <!-- Target Drop Slot for the Game -->
+            <div class="mt-6">
+              <label class="block text-center text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Arrastra el conector o bus correspondiente a esta ranura:</label>
+              <div id="game-drop-target" class="drop-zone target-card-slot min-h-[64px] border-2 border-dashed border-indigo-300 dark:border-slate-600 rounded-2xl flex items-center justify-center bg-white dark:bg-slate-800" data-target="">
+                <span class="text-xs text-slate-400 font-medium">Suelta aquí el término correcto</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Draggables Pool for Game Mode -->
+          <div class="mt-6 bg-slate-100 dark:bg-slate-900/60 p-5 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-3">Opciones disponibles para este nivel:</span>
+            <div id="game-bank" class="flex flex-wrap gap-2.5 min-h-[48px] justify-center items-center">
+              <!-- Draggables injected dynamically -->
+            </div>
+          </div>
+
+          <!-- Game Action Controls -->
+          <div class="mt-6 flex items-center justify-between">
+            <button onclick="resetGameMode()" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition flex items-center gap-1">
+              <i class="ph-bold ph-arrow-counter-clockwise"></i> Reiniciar Partida
+            </button>
+            <button id="game-next-btn" onclick="submitGameLevel()" class="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-lg transition flex items-center gap-2">
+              <i class="ph-bold ph-paper-plane-right text-lg"></i> Confirmar y Siguiente
+            </button>
+          </div>
+
+          <!-- Level Feedback Message -->
+          <div id="game-feedback" class="mt-4 text-center font-bold text-sm min-h-[24px]"></div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-6 mt-12">
+    <div class="max-w-7xl mx-auto px-4 text-center text-slate-500 dark:text-slate-400 text-sm">
+      <p>Recurso Didáctico Interactivo • Buses y ranuras de expansión</p>
+    </div>
+  </footer>
+
+  <!-- SCRIPT ENGINE -->
+  <script>
+    /* Data Definitions */
+    const textItemsData = [
+      { id: 'xt', text: 'Bus XT (8 bits)' },
+      { id: 'isa', text: 'Bus ISA (16 bits)' },
+      { id: 'mca', text: 'MCA (IBM)' },
+      { id: 'eisa', text: 'Bus EISA' },
+      { id: 'vesa', text: 'VESA (VLB)' },
+      { id: 'pci', text: 'Slot PCI' },
+      { id: 'agp', text: 'Puerto AGP' },
+      { id: 'pcie', text: 'PCI Express' },
+      { id: 'pcie-x1', text: 'PCIe x1' },
+      { id: 'pcie-x16', text: 'PCIe x16' },
+      { id: 'vga', text: 'VGA / HD15' },
+      { id: 's-video', text: 'S-Vídeo' },
+      { id: 'dvi', text: 'DVI' },
+      { id: 'hdmi', text: 'HDMI' }
+    ];
+
+    const identifyItemsData = [
+      { 
+        id: 'slot-xt', 
+        name: 'Bus XT', 
+        desc: 'Primer bus estándar de 8 bits utilizado en el IBM PC original (62 contactos).',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><rect x="10" y="15" width="200" height="28" rx="3" fill="#1e293b" stroke="#475569" stroke-width="2"/><rect x="25" y="21" width="170" height="16" fill="#fbbf24"/></svg>`
+      },
+      { 
+        id: 'slot-isa', 
+        name: 'Bus ISA', 
+        desc: 'Bus de 16 bits estandarizado en el IBM AT. Ranura negra alargada dividida en dos secciones (98 contactos).',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><rect x="10" y="15" width="200" height="28" rx="3" fill="#0f172a" stroke="#334155" stroke-width="2"/><rect x="20" y="21" width="110" height="16" fill="#f59e0b"/><rect x="140" y="21" width="60" height="16" fill="#f59e0b"/></svg>`
+      },
+      { 
+        id: 'slot-mca', 
+        name: 'MCA (Micro Channel)', 
+        desc: 'Arquitectura propietaria de 32 bits creada por IBM para la serie PS/2. Contactos muy finos e incompatibles con ISA.',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><rect x="10" y="15" width="200" height="28" rx="3" fill="#475569" stroke="#64748b" stroke-width="2"/><rect x="20" y="21" width="70" height="16" fill="#94a3b8"/><rect x="100" y="21" width="100" height="16" fill="#94a3b8"/></svg>`
+      },
+      { 
+        id: 'slot-eisa', 
+        name: 'Bus EISA', 
+        desc: 'Extensión de ISA a 32 bits desarrollada por la competencia. Ranura profunda de color oscuro o marrón.',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><rect x="10" y="15" width="200" height="30" rx="3" fill="#451a03" stroke="#78350f" stroke-width="2"/><rect x="20" y="21" width="110" height="18" fill="#d97706"/><rect x="140" y="21" width="60" height="18" fill="#d97706"/></svg>`
+      },
+      { 
+        id: 'slot-vesa', 
+        name: 'VESA (VLB)', 
+        desc: 'VESA Local Bus de 32 bits. Consiste en una ranura ISA estándar seguida de una extensión marrón en línea.',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><rect x="10" y="15" width="130" height="28" rx="3" fill="#0f172a" stroke="#334155" stroke-width="2"/><rect x="18" y="21" width="70" height="16" fill="#f59e0b"/><rect x="95" y="21" width="38" height="16" fill="#f59e0b"/><rect x="145" y="15" width="65" height="28" rx="3" fill="#78350f" stroke="#92400e" stroke-width="2"/><rect x="150" y="21" width="55" height="16" fill="#f59e0b"/></svg>`
+      },
+      { 
+        id: 'slot-pci', 
+        name: 'Slot PCI', 
+        desc: 'Ranura estándar paralela de 32 bits de color blanco presente en ordenadores desde la era Pentium.',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><rect x="10" y="15" width="200" height="28" rx="4" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><rect x="25" y="21" width="60" height="16" fill="#cbd5e1"/><rect x="95" y="21" width="100" height="16" fill="#cbd5e1"/></svg>`
+      },
+      { 
+        id: 'slot-agp', 
+        name: 'Slot AGP', 
+        desc: 'Puerto de vídeo dedicado de color marrón/verde con pestaña de retención para tarjetas aceleradoras 3D.',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><rect x="10" y="15" width="190" height="28" rx="4" fill="#854d0e" stroke="#a16207" stroke-width="2"/><rect x="20" y="21" width="140" height="16" fill="#fef08a"/><rect x="180" y="10" width="22" height="38" rx="3" fill="#ca8a04"/></svg>`
+      },
+      { 
+        id: 'pcie-x1', 
+        name: 'PCIe x1', 
+        desc: 'Ranura PCI Express muy corta (1 carril) utilizada para tarjetas de sonido, red, Wi-Fi o puertos USB extra.',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><rect x="10" y="15" width="65" height="28" rx="4" fill="#0284c7" stroke="#0369a1" stroke-width="2"/><rect x="18" y="21" width="12" height="16" fill="#bae6fd"/><rect x="36" y="21" width="30" height="16" fill="#bae6fd"/></svg>`
+      },
+      { 
+        id: 'pcie-x4', 
+        name: 'PCIe x4', 
+        desc: 'Ranura PCI Express de longitud reducida-media (4 carriles) usada habitualmente en SSDs PCIe y tarjetas de red 10GbE.',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><rect x="10" y="15" width="105" height="28" rx="4" fill="#0284c7" stroke="#0369a1" stroke-width="2"/><rect x="18" y="21" width="12" height="16" fill="#bae6fd"/><rect x="36" y="21" width="70" height="16" fill="#bae6fd"/></svg>`
+      },
+      { 
+        id: 'pcie-x8', 
+        name: 'PCIe x8', 
+        desc: 'Ranura PCI Express de longitud intermedia (8 carriles) empleada en controladoras RAID y servidores.',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><rect x="10" y="15" width="150" height="28" rx="4" fill="#0284c7" stroke="#0369a1" stroke-width="2"/><rect x="18" y="21" width="12" height="16" fill="#bae6fd"/><rect x="36" y="21" width="115" height="16" fill="#bae6fd"/></svg>`
+      },
+      { 
+        id: 'pcie-x16', 
+        name: 'PCIe x16', 
+        desc: 'Ranura PCI Express larga de 16 carriles con palanca de bloqueo, estándar para tarjetas gráficas modernas de alto rendimiento.',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><rect x="10" y="15" width="190" height="28" rx="4" fill="#0284c7" stroke="#0369a1" stroke-width="2"/><rect x="18" y="21" width="12" height="16" fill="#bae6fd"/><rect x="36" y="21" width="155" height="16" fill="#bae6fd"/><rect x="185" y="10" width="18" height="38" rx="3" fill="#0369a1"/></svg>`
+      },
+      { 
+        id: 'puerto-vga', 
+        name: 'VGA / HD15', 
+        desc: 'Conector trapezoidal analógico azul de 15 pines dispuesto en 3 filas para monitores CRT y proyectores.',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><polygon points="50,15 170,15 160,45 60,45" fill="#2563eb" rx="5"/><circle cx="80" cy="23" r="2.5" fill="#fff"/><circle cx="95" cy="23" r="2.5" fill="#fff"/><circle cx="110" cy="23" r="2.5" fill="#fff"/><circle cx="125" cy="23" r="2.5" fill="#fff"/><circle cx="140" cy="23" r="2.5" fill="#fff"/><circle cx="87" cy="30" r="2.5" fill="#fff"/><circle cx="102" cy="30" r="2.5" fill="#fff"/><circle cx="117" cy="30" r="2.5" fill="#fff"/><circle cx="132" cy="30" r="2.5" fill="#fff"/><circle cx="80" cy="37" r="2.5" fill="#fff"/><circle cx="95" cy="37" r="2.5" fill="#fff"/><circle cx="110" cy="37" r="2.5" fill="#fff"/><circle cx="125" cy="37" r="2.5" fill="#fff"/><circle cx="140" cy="37" r="2.5" fill="#fff"/></svg>`
+      },
+      { 
+        id: 'puerto-svideo', 
+        name: 'S-Vídeo', 
+        desc: 'Conector circular Mini-DIN de 4 o 7 pines que separa luminancia (Y) y crominancia (C).',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><circle cx="110" cy="30" r="22" fill="#334155" stroke="#94a3b8" stroke-width="3"/><circle cx="100" cy="23" r="2.5" fill="#fff"/><circle cx="120" cy="23" r="2.5" fill="#fff"/><circle cx="97" cy="35" r="2.5" fill="#fff"/><circle cx="123" cy="35" r="2.5" fill="#fff"/><rect x="104" y="38" width="12" height="6" fill="#fff" rx="1"/></svg>`
+      },
+      { 
+        id: 'puerto-dvi', 
+        name: 'DVI', 
+        desc: 'Conector rectangular para transmisión de vídeo digital en monitores LCD/TFT sin pérdida de calidad.',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><rect x="40" y="15" width="140" height="30" rx="4" fill="#f8fafc" stroke="#64748b" stroke-width="3"/><rect x="50" y="22" width="65" height="16" fill="#334155"/><rect x="125" y="22" width="20" height="16" fill="#334155"/><line x1="135" y1="22" x2="135" y2="38" stroke="#fff" stroke-width="2"/><line x1="125" y1="30" x2="145" y2="30" stroke="#fff" stroke-width="2"/></svg>`
+      },
+      { 
+        id: 'puerto-hdmi', 
+        name: 'HDMI', 
+        desc: 'Conector digital compacto omnipresente para enviar vídeo en alta definición y audio multicanal.',
+        svg: `<svg viewBox="0 0 220 60" class="w-full h-20"><path d="M 60 20 L 160 20 L 160 35 L 150 45 L 70 45 L 60 35 Z" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/><rect x="75" y="26" width="70" height="8" fill="#f59e0b" rx="1"/></svg>`
+      }
+    ];
+
+    let currentIdentifyMode = 'text';
+    let draggedElement = null;
+    let scoreAct1 = 0;
+    let scoreAct2 = 0;
+
+    /* GAME MODE STATE */
+    let gameSequence = [];
+    let currentLevelIndex = 0;
+    let gameLives = 3;
+    let gameScore = 0;
+    let gameCardView = 'text';
+
+    window.onload = function() {
+      initActivity1();
+      initActivity2();
+      initGameMode();
+      setupGlobalDragListeners();
+    };
+
+    /* TAB NAVIGATION */
+    function switchTab(tabIndex) {
+      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        if (idx === tabIndex - 1) {
+          btn.classList.add('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-500/20');
+          btn.classList.remove('text-slate-600', 'dark:text-slate-400', 'hover:bg-slate-200', 'dark:hover:bg-slate-800');
+        } else {
+          btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-md', 'shadow-indigo-500/20');
+          btn.classList.add('text-slate-600', 'dark:text-slate-400', 'hover:bg-slate-200', 'dark:hover:bg-slate-800');
+        }
+      });
+
+      document.querySelectorAll('.tab-content').forEach((content, idx) => {
+        if (idx === tabIndex - 1) {
+          content.classList.remove('hidden');
+          content.classList.add('block');
+        } else {
+          content.classList.add('hidden');
+          content.classList.remove('block');
+        }
+      });
+    }
+
+    function shuffleArray(array) {
+      return [...array].sort(() => Math.random() - 0.5);
+    }
+
+    function createDraggableChip(id, text) {
+      const chip = document.createElement('div');
+      chip.className = 'draggable-item inline-flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 font-semibold text-xs sm:text-sm rounded-xl border border-indigo-200 dark:border-slate-600 shadow-sm hover:border-indigo-400 dark:hover:border-indigo-400';
+      chip.setAttribute('draggable', 'true');
+      chip.setAttribute('data-id', id);
+      chip.setAttribute('data-text', text);
+      
+      chip.innerHTML = `<i class="ph-bold ph-dots-six-vertical text-slate-400"></i> <span>${text}</span>`;
+
+      chip.addEventListener('dragstart', handleDragStart);
+      chip.addEventListener('dragend', handleDragEnd);
+
+      return chip;
+    }
+
+    /* ACTIVIDAD 3: GAME MODE LOGIC */
+    function initGameMode() {
+      gameSequence = shuffleArray(identifyItemsData);
+      currentLevelIndex = 0;
+      gameLives = 3;
+      gameScore = 0;
+      gameCardView = 'text';
+      updateGameUI();
+      loadGameLevel();
+    }
+
+    function resetGameMode() {
+      initGameMode();
+    }
+
+    function setGameCardView(view) {
+      gameCardView = view;
+      const btnText = document.getElementById('game-view-text');
+      const btnImage = document.getElementById('game-view-image');
+      
+      if(view === 'text') {
+        btnText.className = "px-3 py-1 rounded-lg bg-indigo-600 text-white transition";
+        btnImage.className = "px-3 py-1 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-300 transition";
+      } else {
+        btnImage.className = "px-3 py-1 rounded-lg bg-indigo-600 text-white transition";
+        btnText.className = "px-3 py-1 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-300 transition";
+      }
+
+      renderGameCard();
+    }
+
+    function updateGameUI() {
+      // Lives hearts
+      const heartsContainer = document.getElementById('game-lives');
+      heartsContainer.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        if (i < gameLives) {
+          heartsContainer.innerHTML += `<i class="ph-fill ph-heart text-red-500"></i>`;
+        } else {
+          heartsContainer.innerHTML += `<i class="ph-bold ph-heart text-slate-600"></i>`;
+        }
+      }
+
+      // Score
+      document.getElementById('game-score').innerText = `${gameScore} pts`;
+
+      // Progress bar
+      const progressPercent = ((currentLevelIndex + 1) / gameSequence.length) * 100;
+      document.getElementById('game-progress-bar').style.width = `${progressPercent}%`;
+      document.getElementById('game-level-indicator').innerText = `Nivel ${currentLevelIndex + 1} / ${gameSequence.length}`;
+
+      updateTotalScore();
+    }
+
+    function loadGameLevel() {
+      if (currentLevelIndex >= gameSequence.length) {
+        // Game completed
+        document.getElementById('game-arena-container').innerHTML = `
+          <div class="text-center bg-slate-50 dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-700">
+            <i class="ph-bold ph-trophy text-6xl text-yellow-400 mb-4 inline-block"></i>
+            <h3 class="text-2xl font-black mb-2">¡Felicidades! Juego Completado</h3>
+            <p class="text-slate-600 dark:text-slate-300 mb-6">Has superado los 15 niveles de ranuras y buses con un puntaje final de <strong>${gameScore} XP</strong>.</p>
+            <button onclick="window.location.reload()" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition">Jugar de Nuevo</button>
+          </div>
+        `;
+        triggerConfetti();
+        return;
+      }
+
+      const activeItem = gameSequence[currentLevelIndex];
+      renderGameCard();
+
+      // Reset Target slot
+      const targetSlot = document.getElementById('game-drop-target');
+      targetSlot.innerHTML = `<span class="text-xs text-slate-400 font-medium">Suelta aquí el término correcto</span>`;
+      targetSlot.setAttribute('data-target', activeItem.id);
+      targetSlot.classList.remove('is-correct', 'is-incorrect');
+
+      // Prepare Bank with Correct Item + 3 Random Options
+      const bank = document.getElementById('game-bank');
+      bank.innerHTML = '';
+
+      const otherItems = identifyItemsData.filter(i => i.id !== activeItem.id);
+      const randomDistractors = shuffleArray(otherItems).slice(0, 3);
+      const options = shuffleArray([activeItem, ...randomDistractors]);
+
+      options.forEach(opt => {
+        bank.appendChild(createDraggableChip(opt.id, opt.name));
+      });
+
+      document.getElementById('game-feedback').innerText = '';
+    }
+
+    function renderGameCard() {
+      const activeItem = gameSequence[currentLevelIndex];
+      const cardContainer = document.getElementById('game-card-content');
+
+      if (gameCardView === 'text') {
+        cardContainer.innerHTML = `
+          <div class="max-w-lg">
+            <span class="text-xs uppercase font-extrabold text-indigo-500 tracking-widest block mb-2">Descripción Técnica</span>
+            <p class="text-lg text-slate-800 dark:text-slate-100 font-semibold leading-relaxed">${activeItem.desc}</p>
+          </div>
+        `;
+      } else {
+        cardContainer.innerHTML = `
+          <div class="w-full max-w-md bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <span class="text-xs uppercase font-extrabold text-amber-500 tracking-widest block mb-3">Diagrama Esquemático Vectorial</span>
+            ${activeItem.svg}
+          </div>
+        `;
+      }
+    }
+
+    function submitGameLevel() {
+      if (gameLives <= 0) return;
+
+      const targetSlot = document.getElementById('game-drop-target');
+      const expectedId = targetSlot.getAttribute('data-target');
+      const childChip = targetSlot.querySelector('.draggable-item');
+      const feedbackEl = document.getElementById('game-feedback');
+
+      if (!childChip) {
+        feedbackEl.className = "mt-4 text-center font-bold text-sm text-amber-500";
+        feedbackEl.innerText = "Debes arrastrar una opción antes de confirmar.";
+        return;
+      }
+
+      const actualId = childChip.getAttribute('data-id');
+
+      if (actualId === expectedId) {
+        targetSlot.classList.add('is-correct');
+        gameScore += 100;
+        feedbackEl.className = "mt-4 text-center font-bold text-sm text-emerald-500";
+        feedbackEl.innerText = "¡Excelente! Respuesta correcta (+100 XP). Pasando al siguiente nivel...";
+        
+        setTimeout(() => {
+          currentLevelIndex++;
+          updateGameUI();
+          loadGameLevel();
+        }, 1200);
+      } else {
+        targetSlot.classList.add('is-incorrect');
+        gameLives--;
+        feedbackEl.className = "mt-4 text-center font-bold text-sm text-red-500";
+        
+        if (gameLives <= 0) {
+          feedbackEl.innerText = "¡Has perdido todas las vidas! Reiniciando el desafío...";
+          setTimeout(() => {
+            initGameMode();
+          }, 2000);
+        } else {
+          feedbackEl.innerText = `Incorrecto. Te quedan ${gameLives} vida(s). Inténtalo de nuevo.`;
+          updateGameUI();
+        }
+      }
+    }
+
+    /* ACTIVITY 1 ENGINE */
+    function initActivity1() {
+      const bank = document.getElementById('drag-bank-1');
+      bank.innerHTML = '';
+      const shuffled = shuffleArray(textItemsData);
+      
+      shuffled.forEach(item => {
+        bank.appendChild(createDraggableChip(item.id, item.text));
+      });
+
+      document.querySelectorAll('#actividad-1 .text-drop-slot').forEach(slot => {
+        slot.innerHTML = '';
+        slot.className = 'text-drop-slot drop-zone';
+      });
+
+      document.getElementById('feedback-1').innerText = '';
+    }
+
+    function resetActivity1() {
+      initActivity1();
+      scoreAct1 = 0;
+      updateTotalScore();
+    }
+
+    function checkActivity1() {
+      let correctCount = 0;
+      const totalSlots = textItemsData.length;
+
+      document.querySelectorAll('#actividad-1 .text-drop-slot').forEach(slot => {
+        const expectedId = slot.getAttribute('data-slot');
+        const childChip = slot.querySelector('.draggable-item');
+
+        slot.classList.remove('is-correct', 'is-incorrect');
+
+        if (childChip) {
+          const actualId = childChip.getAttribute('data-id');
+          if (actualId === expectedId) {
+            correctCount++;
+            slot.classList.add('is-correct');
+          } else {
+            slot.classList.add('is-incorrect');
+          }
+        } else {
+          slot.classList.add('is-incorrect');
+        }
+      });
+
+      scoreAct1 = correctCount;
+      updateTotalScore();
+
+      const feedbackEl = document.getElementById('feedback-1');
+      if (correctCount === totalSlots) {
+        feedbackEl.className = 'text-sm font-bold text-emerald-600 dark:text-emerald-400';
+        feedbackEl.innerText = `¡Excelente! Has completado correctamente las ${correctCount} respuestas del texto.`;
+        triggerConfetti();
+      } else {
+        feedbackEl.className = 'text-sm font-bold text-amber-600 dark:text-amber-400';
+        feedbackEl.innerText = `Has acertado ${correctCount} de ${totalSlots}. Revisa los bloques marcados en rojo.`;
+      }
+    }
+
+    /* ACTIVITY 2 ENGINE (IDENTIFY MODES) */
+    function setIdentifyMode(mode) {
+      currentIdentifyMode = mode;
+      const btnText = document.getElementById('mode-btn-text');
+      const btnImage = document.getElementById('mode-btn-image');
+
+      if (mode === 'text') {
+        btnText.className = 'px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm flex items-center gap-1.5';
+        btnImage.className = 'px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1.5';
+      } else {
+        btnImage.className = 'px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm flex items-center gap-1.5';
+        btnText.className = 'px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1.5';
+      }
+
+      initActivity2();
+    }
+
+    function initActivity2() {
+      const bank = document.getElementById('drag-bank-2');
+      const grid = document.getElementById('identify-cards-grid');
+
+      bank.innerHTML = '';
+      grid.innerHTML = '';
+      document.getElementById('feedback-2').innerText = '';
+
+      // Create shuffled draggables
+      const shuffledNames = shuffleArray(identifyItemsData);
+      shuffledNames.forEach(item => {
+        bank.appendChild(createDraggableChip(item.id, item.name));
+      });
+
+      // Render cards based on mode
+      const shuffledCards = shuffleArray(identifyItemsData);
+      shuffledCards.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'flex flex-col justify-between p-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40 shadow-sm';
+
+        if (currentIdentifyMode === 'text') {
+          card.innerHTML = `
+            <div class="mb-4">
+              <span class="inline-block px-2.5 py-1 bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-bold mb-2">Especificación Técnica</span>
+              <p class="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">${item.desc}</p>
+            </div>
+            <div class="target-card-slot drop-zone" data-target="${item.id}">
+              <span class="text-xs text-slate-400 dark:text-slate-500 font-medium">Arrastra el término aquí</span>
+            </div>
+          `;
+        } else {
+          card.innerHTML = `
+            <div class="mb-4 flex flex-col items-center">
+              <span class="inline-block px-2.5 py-1 bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-bold mb-3 self-start">Diagrama SVG del Slot/Puerto</span>
+              <div class="w-full flex items-center justify-center bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
+                ${item.svg}
+              </div>
+            </div>
+            <div class="target-card-slot drop-zone" data-target="${item.id}">
+              <span class="text-xs text-slate-400 dark:text-slate-500 font-medium">Arrastra la etiqueta aquí</span>
+            </div>
+          `;
+        }
+
+        grid.appendChild(card);
+      });
+    }
+
+    function resetActivity2() {
+      initActivity2();
+      scoreAct2 = 0;
+      updateTotalScore();
+    }
+
+    function checkActivity2() {
+      let correctCount = 0;
+      const totalCards = identifyItemsData.length;
+
+      document.querySelectorAll('#identify-cards-grid .target-card-slot').forEach(slot => {
+        const expectedId = slot.getAttribute('data-target');
+        const childChip = slot.querySelector('.draggable-item');
+
+        slot.classList.remove('is-correct', 'is-incorrect');
+
+        if (childChip) {
+          const actualId = childChip.getAttribute('data-id');
+          if (actualId === expectedId) {
+            correctCount++;
+            slot.classList.add('is-correct');
+          } else {
+            slot.classList.add('is-incorrect');
+          }
+        } else {
+          slot.classList.add('is-incorrect');
+        }
+      });
+
+      scoreAct2 = correctCount;
+      updateTotalScore();
+
+      const feedbackEl = document.getElementById('feedback-2');
+      if (correctCount === totalCards) {
+        feedbackEl.className = 'text-sm font-bold text-emerald-600 dark:text-emerald-400';
+        feedbackEl.innerText = `¡Felicidades! Has identificado correctamente los ${correctCount} buses y puertos.`;
+        triggerConfetti();
+      } else {
+        feedbackEl.className = 'text-sm font-bold text-amber-600 dark:text-amber-400';
+        feedbackEl.innerText = `Has identificado ${correctCount} de ${totalCards} elementos.`;
+      }
+    }
+
+    /* GLOBAL SCORE DISPLAY */
+    function updateTotalScore() {
+      const gameScoreConverted = Math.round(gameScore / 100);
+      const totalScore = scoreAct1 + scoreAct2 + gameScoreConverted;
+      document.getElementById('score-display').innerText = `${totalScore} / 44`;
+    }
+
+    /* DRAG & DROP EVENT LISTENERS */
+    function setupGlobalDragListeners() {
+      document.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        const dropZone = e.target.closest('.drop-zone');
+        if (dropZone) {
+          dropZone.classList.add('drag-over');
+        }
+      });
+
+      document.addEventListener('dragleave', function(e) {
+        const dropZone = e.target.closest('.drop-zone');
+        if (dropZone) {
+          dropZone.classList.remove('drag-over');
+        }
+      });
+
+      document.addEventListener('drop', function(e) {
+        e.preventDefault();
+        const dropZone = e.target.closest('.drop-zone');
+
+        document.querySelectorAll('.drop-zone').forEach(zone => zone.classList.remove('drag-over'));
+
+        if (dropZone && draggedElement) {
+          // If drop slot already contains a chip, return existing chip to active bank
+          if (dropZone.children.length > 0 && dropZone.querySelector('.draggable-item')) {
+            const existingChip = dropZone.querySelector('.draggable-item');
+            let activeBankId = 'drag-bank-1';
+            if (document.getElementById('actividad-2').classList.contains('block')) activeBankId = 'drag-bank-2';
+            if (document.getElementById('actividad-3').classList.contains('block')) activeBankId = 'game-bank';
+
+            document.getElementById(activeBankId).appendChild(existingChip);
+          }
+
+          // Hide slot placeholder text if present
+          const placeholder = dropZone.querySelector('span:not(.draggable-item span)');
+          if(placeholder) placeholder.style.display = 'none';
+
+          dropZone.appendChild(draggedElement);
+        }
+      });
+
+      // Returning chips to banks on drop
+      ['drag-bank-1', 'drag-bank-2', 'game-bank'].forEach(bankId => {
+        const bank = document.getElementById(bankId);
+        if(bank) {
+          bank.addEventListener('dragover', (e) => e.preventDefault());
+          bank.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (draggedElement) {
+              bank.appendChild(draggedElement);
+            }
+          });
+        }
+      });
+    }
+
+    function handleDragStart(e) {
+      draggedElement = this;
+      this.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', this.getAttribute('data-id'));
+    }
+
+    function handleDragEnd() {
+      this.classList.remove('dragging');
+      draggedElement = null;
+    }
+
+    function triggerConfetti() {
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.6 }
+        });
+      }
+    }
+  </script>
+</body>
+</html>
